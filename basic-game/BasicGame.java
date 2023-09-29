@@ -1,3 +1,5 @@
+import java.util.Random;
+
 public class BasicGame{
    
    static int gameLoopNumber = 100;
@@ -15,10 +17,12 @@ public class BasicGame{
       int enemyCol = 4;
       Direction enemyDirection = Direction.LEFT;
 
+      //pálya inicializálása
       String[][] level = new String[height][width];
-      initLevel(level); //pálya inicializálása
+      initLevel(level);
 
       for(int iterationNumber=1; iterationNumber<=gameLoopNumber; iterationNumber++){
+         /*
          //játékos léptetése
          if(iterationNumber%15==0){ 
             playerDirection = changeDirection(playerDirection);
@@ -37,7 +41,13 @@ public class BasicGame{
       
          draw(level, playerMarker, playerRow, playerCol, enemyMarker, enemyRow, enemyCol); //pálya és játékos kirajzolása
          addSomeDelay(200L, iterationNumber); //késleltetés hozzáadása
+
+         if(playerRow==enemyRow && playerCol==enemyCol) break;
+
+         */
+        addRandomWall();
       }
+      System.out.println("GAME OVER");
  }
  
  //--------------METHODS:
@@ -52,6 +62,22 @@ public class BasicGame{
             }
          }
       }
+   }
+
+   static void addRandomWall(){
+      Random random = new Random();
+            
+      int[] horizontalWallCoordinates = new int[2];
+      horizontalWallCoordinates[0] = random.nextInt(height);
+      horizontalWallCoordinates[1] = random.nextInt(width);
+      int horizontalWallLength = random.nextInt(width-3);
+      
+      int[] verticalWallCoordinates = new int[2];
+      int verticalWallLength = random.nextInt(height-3);
+      verticalWallCoordinates[0] = random.nextInt(verticalWallLength);
+      verticalWallCoordinates[1] = random.nextInt(width);
+
+      System.out.println(verticalWallLength + "    " + verticalWallCoordinates[0] + " " + verticalWallCoordinates[1]);
    }
 
    static void draw(String[][] board, String playerMark, int playerX, int playerY, String enemyMark, int enemyX, int enemyY){
