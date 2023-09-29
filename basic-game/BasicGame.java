@@ -1,55 +1,77 @@
 public class BasicGame{
- 
-   public static void main(String []args) throws InterruptedException{
-      String[][] level = new String[10][10];
-      String playerMarker = "O";
-      int row = 2;
-      int col = 2;
-      Direction direction = Direction.RIGHT;
+   
+   static int gameLoopNumber = 100;
+   static int height = 15;
+   static int width = 15;
 
+   public static void main(String []args) throws InterruptedException{
+      String playerMarker = "O";
+      int playerRow = 2;
+      int playerCol = 2;
+      Direction playerDirection = Direction.RIGHT;
+
+      String enemyMarker = "-";
+      int enemyRow = 7;
+      int enemyCol = 4;
+      Direction enemyDirection = Direction.LEFT;
+
+      String[][] level = new String[height][width];
       initLevel(level); //pálya inicializálása
 
-      for(int k=1; k<=100; k++){
-         if(k%10==0){ //irányváltás 10 körönként
-            direction = changeDirection(direction);
+      for(int iterationNumber=1; iterationNumber<=gameLoopNumber; iterationNumber++){
+         //játékos léptetése
+         if(iterationNumber%15==0){ 
+            playerDirection = changeDirection(playerDirection);
          }
-         
-        int[] coordinates = makeMove(direction, level, row, col); //irányváltás ha falhoz ér
-        row = coordinates[0];
-        col = coordinates[1];   
-      
-        draw(level, playerMarker, row, col);//pálya és játékos kirajzolása
+         int[] playeCoordinates = makeMove(playerDirection, level, playerRow, playerCol);
+         playerRow = playeCoordinates[0];
+         playerCol = playeCoordinates[1];   
 
-        System.out.println("------------");
-        Thread.sleep(500);
+         //ellenfél léptetése
+         if(iterationNumber%10==0){ 
+            enemyDirection = changeDirection(enemyDirection);
+         }
+         int[] enemyCoordinates = makeMove(enemyDirection, level, enemyRow, enemyCol);
+         enemyRow = enemyCoordinates[0];
+         enemyCol = enemyCoordinates[1];  
+      
+         draw(level, playerMarker, playerRow, playerCol, enemyMarker, enemyRow, enemyCol); //pálya és játékos kirajzolása
+         addSomeDelay(200L, iterationNumber); //késleltetés hozzáadása
       }
  }
  
  //--------------METHODS:
 
    static void initLevel(String[][] board){
-      for(int i = 0; i<board.length; i++){
-         for(int j = 0; j<board[i].length; j++){
-            if(i==0 || i==board.length-1 || j==0 || j==board[i].length-1){
-               board[i][j] = "X";
+      for(int row = 0; row<board.length; row++){
+         for(int col = 0; col<board[row].length; col++){
+            if(row==0 || row==height-1 || col==0 || col==width-1){
+               board[row][col] = "X";
             }else{
-               board[i][j] = " ";         
+               board[row][col] = " ";         
             }
          }
       }
    }
 
-   static void draw(String[][] board, String mark, int x, int y){
-      for(int i = 0; i<board.length; i++){
-         for(int j = 0; j<board[i].length; j++){ 
-            if(i==x && j==y){
-               System.out.print(mark);
+   static void draw(String[][] board, String playerMark, int playerX, int playerY, String enemyMark, int enemyX, int enemyY){
+      for(int row = 0; row<height; row++){
+         for(int col = 0; col<width; col++){ 
+            if(row==playerX && col==playerY){
+               System.out.print(playerMark);
+            }else if(row==enemyX && col==enemyY){
+               System.out.print(enemyMark);
             }else{
-               System.out.print(board[i][j]);
+               System.out.print(board[row][col]);
             }   
          }
          System.out.println();
       }
+   }
+
+   static void addSomeDelay(long timeout, int iteration) throws InterruptedException{
+      System.out.println("------"+iteration+"-------");
+      Thread.sleep(timeout);
    }
 
    static Direction changeDirection(Direction direction){
