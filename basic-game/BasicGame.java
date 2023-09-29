@@ -21,20 +21,7 @@ public class BasicGame{
 
    for(int k=1; k<=100; k++){
       if(k%10==0){ //irányváltás 10 körönként
-         switch(direction){
-            case UP:
-               direction = Direction.RIGHT;
-               break;
-            case DOWN:
-               direction = Direction.LEFT;
-               break;
-            case LEFT:
-               direction = Direction.UP;
-               break;
-            case RIGHT:
-               direction = Direction.DOWN;
-               break;
-         }
+         direction = changeDirection(direction);
       }
       
       switch(direction){//irányváltás ha falhoz ér
@@ -67,23 +54,43 @@ public class BasicGame{
             }
             break;
       }
+   
+      draw(level, playerMarker, row, col);//pálya és játékos kirajzolása
 
-
-
-   //pálya és játékos kirajzolása
-      for(int i = 0; i<level.length; i++){
-         for(int j = 0; j<level[i].length; j++){
-       
-            if(i==row && j==col){
-               System.out.print(playerMarker);
-            }else{
-               System.out.print(level[i][j]);
-            }   
-         }
-         System.out.println();
-      }
       System.out.println("------------");
       Thread.sleep(1000);
    }
  }
+
+   static void draw(String[][] board, String mark, int x, int y){
+      for(int i = 0; i<board.length; i++){
+         for(int j = 0; j<board[i].length; j++){ 
+            if(i==x && j==y){
+               System.out.print(mark);
+            }else{
+               System.out.print(board[i][j]);
+            }   
+         }
+         System.out.println();
+      }
+   }
+
+   static Direction changeDirection(Direction direction){
+      switch(direction){
+         case UP:
+            direction = Direction.RIGHT;
+            break;
+         case DOWN:
+            direction = Direction.LEFT;
+            break;
+         case LEFT:
+            direction = Direction.UP;
+            break;
+         case RIGHT:
+            direction = Direction.DOWN;
+            break;
+      }
+      return direction;
+   }
+
 }
