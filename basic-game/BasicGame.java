@@ -8,20 +8,31 @@ public class BasicGame{
    static Random RANDOM = new Random();
 
    public static void main(String []args) throws InterruptedException{
-      String playerMarker = "O";
-      int playerRow = 2;
-      int playerCol = 2;
-      Direction playerDirection = Direction.RIGHT;
-
-      String enemyMarker = "-";
-      int enemyRow = 7;
-      int enemyCol = 4;
-      Direction enemyDirection = Direction.LEFT;
-
-      //pálya inicializálása
+   //pálya inicializálása
       String[][] level = new String[HEIGHT][WIDTH];
       initLevel(level);
-      addRandomWall(level, 1, 1);
+      addRandomWall(level, 2, 3);
+   //játékos inicializálása
+      String playerMarker = "O";
+      int playerRow = getRandomPosition(level)[0];
+      int playerCol = getRandomPosition(level)[1];
+      Direction playerDirection = Direction.RIGHT;
+   //ellenfél inicializálása
+      String enemyMarker = "-";
+      int enemyRow;
+      int enemyCol;
+      do{
+         enemyRow = getRandomPosition(level)[0];
+         enemyCol = getRandomPosition(level)[1];
+      }while((Math.abs(playerRow-enemyRow) + Math.abs(playerCol-enemyCol) < 10)
+
+      );
+      Direction enemyDirection = Direction.LEFT;
+   //power-up inicializálása
+      String powerUpMarker = "*";
+      int powerUpRow = getRandomPosition(level)[0];
+      int powerUpCol = getRandomPosition(level)[0];
+      boolean isPowerUpActive = false;
 
       for(int iterationNumber=1; iterationNumber<=GAME_LOOP_NUMBER; iterationNumber++){
       
@@ -40,7 +51,15 @@ public class BasicGame{
             enemyRow = enemyCoordinates[0];
             enemyCol = enemyCoordinates[1];  
          }
-         draw(level, playerMarker, playerRow, playerCol, enemyMarker, enemyRow, enemyCol); //pálya és játékos kirajzolása
+
+         //power-up feltűnése
+         if(iterationNumber%20==0){
+            isPowerUpActive = !isPowerUpActive;
+            powerUpRow = getRandomPosition(level)[0];
+            powerUpCol = getRandomPosition(level)[1];
+         }
+
+         draw(level, playerMarker, playerRow, playerCol, enemyMarker, enemyRow, enemyCol, powerUpMarker, powerUpRow, powerUpCol, isPowerUpActive); //kirajzolás
          addSomeDelay(200L, iterationNumber); //késleltetés hozzáadása
 
          if(playerRow==enemyRow && playerCol==enemyCol) break;
@@ -90,13 +109,24 @@ public class BasicGame{
       }
    }
 
-   static void draw(String[][] board, String playerMark, int playerX, int playerY, String enemyMark, int enemyX, int enemyY){
+   static int[] getRandomPosition(String[][] board){
+      int[] randomPosition = new int[2];
+      while(!board[randomPosition[0]][randomPosition[1]].equals(" ")){
+         randomPosition[0] = RANDOM.nextInt(HEIGHT-2)+1;
+         randomPosition[1] = RANDOM.nextInt(WIDTH-2)+1;
+      }
+      return randomPosition;
+   }
+
+   static void draw(String[][] board, String playerMark, int playerX, int playerY, String enemyMark, int enemyX, int enemyY, String powerUpMark, int powerUpX, int powerUpY, boolean activePowerUp){
       for(int row = 0; row<HEIGHT; row++){
          for(int col = 0; col<WIDTH; col++){ 
             if(row==playerX && col==playerY){
                System.out.print(playerMark);
             }else if(row==enemyX && col==enemyY){
                System.out.print(enemyMark);
+            }else if(row==powerUpX && col==powerUpY && activePowerUp){
+               System.out.print(powerUpMark);
             }else{
                System.out.print(board[row][col]);
             }   
