@@ -2,9 +2,10 @@ import java.util.Random;
 
 public class BasicGame{
    
-   static int gameLoopNumber = 100;
-   static int height = 15;
-   static int width = 15;
+   static final int GAME_LOOP_NUMBER = 100;
+   static final int HEIGHT = 15;
+   static final int WIDTH = 15;
+   static Random RANDOM = new Random();
 
    public static void main(String []args) throws InterruptedException{
       String playerMarker = "O";
@@ -18,11 +19,12 @@ public class BasicGame{
       Direction enemyDirection = Direction.LEFT;
 
       //pálya inicializálása
-      String[][] level = new String[height][width];
+      String[][] level = new String[HEIGHT][WIDTH];
       initLevel(level);
+      addRandomWall(level, 1, 1);
 
-      for(int iterationNumber=1; iterationNumber<=gameLoopNumber; iterationNumber++){
-         /*
+      for(int iterationNumber=1; iterationNumber<=GAME_LOOP_NUMBER; iterationNumber++){
+      
          //játékos léptetése
          if(iterationNumber%15==0){ 
             playerDirection = changeDirection(playerDirection);
@@ -32,20 +34,17 @@ public class BasicGame{
          playerCol = playeCoordinates[1];   
 
          //ellenfél léptetése
-         if(iterationNumber%10==0){ 
-            enemyDirection = changeDirection(enemyDirection);
+         enemyDirection = changeEnemyDirection(level, enemyDirection, playerRow, playerCol, enemyRow, enemyCol);
+         if(iterationNumber%2==0){ 
+            int[] enemyCoordinates = makeMove(enemyDirection, level, enemyRow, enemyCol);
+            enemyRow = enemyCoordinates[0];
+            enemyCol = enemyCoordinates[1];  
          }
-         int[] enemyCoordinates = makeMove(enemyDirection, level, enemyRow, enemyCol);
-         enemyRow = enemyCoordinates[0];
-         enemyCol = enemyCoordinates[1];  
-      
          draw(level, playerMarker, playerRow, playerCol, enemyMarker, enemyRow, enemyCol); //pálya és játékos kirajzolása
          addSomeDelay(200L, iterationNumber); //késleltetés hozzáadása
 
          if(playerRow==enemyRow && playerCol==enemyCol) break;
-
-         */
-        addRandomWall();
+     
       }
       System.out.println("GAME OVER");
  }
@@ -55,7 +54,7 @@ public class BasicGame{
    static void initLevel(String[][] board){
       for(int row = 0; row<board.length; row++){
          for(int col = 0; col<board[row].length; col++){
-            if(row==0 || row==height-1 || col==0 || col==width-1){
+            if(row==0 || row==HEIGHT-1 || col==0 || col==WIDTH-1){
                board[row][col] = "X";
             }else{
                board[row][col] = " ";         
@@ -64,25 +63,36 @@ public class BasicGame{
       }
    }
 
-   static void addRandomWall(){
-      Random random = new Random();
-            
-      int[] horizontalWallCoordinates = new int[2];
-      horizontalWallCoordinates[0] = random.nextInt(height);
-      horizontalWallCoordinates[1] = random.nextInt(width);
-      int horizontalWallLength = random.nextInt(width-3);
-      
-      int[] verticalWallCoordinates = new int[2];
-      int verticalWallLength = random.nextInt(height-3);
-      verticalWallCoordinates[0] = random.nextInt(verticalWallLength);
-      verticalWallCoordinates[1] = random.nextInt(width);
+   static void addRandomWall(String[][]board, int numberOfHorizontalWalls, int numberOfVerticalWalls){
+      for(int i=0; i<numberOfHorizontalWalls; i++){
+         addHorizontalWall(board);
+      }
+      for(int i=0; i<numberOfVerticalWalls; i++){
+         addVerticalWall(board);
+      }
+   }
 
-      System.out.println(verticalWallLength + "    " + verticalWallCoordinates[0] + " " + verticalWallCoordinates[1]);
+   static void addHorizontalWall(String[][] board){
+      int wallWidth = RANDOM.nextInt(WIDTH-3);
+      int wallRow = RANDOM.nextInt(HEIGHT-2)+1;
+      int wallColumn = RANDOM.nextInt(WIDTH-2-wallWidth);
+      for(int i=0; i<wallWidth; i++){
+         board[wallRow][wallColumn+i] = "X";
+      }
+   }
+
+   static void addVerticalWall(String[][] board){
+      int wallHeight = RANDOM.nextInt(HEIGHT-3);
+      int wallRow = RANDOM.nextInt(HEIGHT-2-wallHeight);
+      int wallColumn = RANDOM.nextInt(WIDTH-2)+1;
+      for(int i=0; i<wallHeight; i++){
+         board[wallRow+i][wallColumn] = "X";
+      }
    }
 
    static void draw(String[][] board, String playerMark, int playerX, int playerY, String enemyMark, int enemyX, int enemyY){
-      for(int row = 0; row<height; row++){
-         for(int col = 0; col<width; col++){ 
+      for(int row = 0; row<HEIGHT; row++){
+         for(int col = 0; col<WIDTH; col++){ 
             if(row==playerX && col==playerY){
                System.out.print(playerMark);
             }else if(row==enemyX && col==enemyY){
@@ -113,6 +123,23 @@ public class BasicGame{
       }
       return direction;
    }
+
+   static Direction changeEnemyDirection(String[][] board, Direction enemyDirection, int playerX, int playerY, int enemyX, int enemyY){
+      if(playerX < enemyX && board[enemyX-1][enemyY].equals(" ")){
+         return Direction.UP;
+      };
+      if(playerX > enemyX && board[enemyX+1][enemyY].equals(" ")){
+         return Direction.DOWN;
+      };
+      if(playerY < enemyY && board[enemyX][enemyY-1].equals(" ")){
+         return Direction.LEFT;
+      };
+      if(playerY > enemyY && board[enemyX][enemyY+1].equals(" ")){
+         return Direction.RIGHT;
+      };
+      return enemyDirection;
+   }
+
 
    static int[] makeMove(Direction direction, String[][] board, int x, int y){
       switch(direction){
