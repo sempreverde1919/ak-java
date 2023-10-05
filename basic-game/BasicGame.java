@@ -2,9 +2,9 @@ import java.util.Random;
 
 public class BasicGame{
    
-   static final int GAME_LOOP_NUMBER = 100;
-   static final int HEIGHT = 15;
-   static final int WIDTH = 15;
+   static final int GAME_LOOP_NUMBER = 1000;
+   static final int HEIGHT = 20;
+   static final int WIDTH = 20;
    static Random RANDOM = new Random();
    static String gameResult = "GAME OVER";
 
@@ -12,8 +12,10 @@ public class BasicGame{
    
       //pálya inicializálása
       String[][] level = new String[HEIGHT][WIDTH];
-      initLevel(level);
-      addRandomWall(level, 2, 3);
+      do{
+         initLevel(level);
+         addRandomWall(level, 2, 3);
+      }while(!isPassable(level));
    
       //játékos inicializálása
       String playerMarker = "O";
@@ -142,11 +144,71 @@ public class BasicGame{
       }
    }
 
+   static boolean isPassable(String[][] board) {
+      String[][] boardCopy = copy(board);
+      outer: for(int row=0; row<HEIGHT; row++){
+         for(int col=0; col<WIDTH; col++){
+            if(" ".equals(boardCopy[row][col])){
+               boardCopy[row][col] = "*";
+               break outer;
+            }
+         }
+      }
+      while(spreadAsterisks(boardCopy)){
+      };
+      for(int row=0; row<HEIGHT; row++){
+         for(int col=0; col<WIDTH; col++){
+            if(" ".equals(boardCopy[row][col])){
+              return false;
+            }
+         }
+      }
+      return true;
+   }
+
+   static String[][] copy(String[][] board){
+      String[][] copy = new String[HEIGHT][WIDTH];
+      for(int row=0; row<HEIGHT; row++){
+         for(int col=0; col<WIDTH; col++){
+            copy[row][col] = board[row][col];
+         }
+      }
+      return copy;
+   }
+   static boolean spreadAsterisks(String[][] board){
+      boolean changed = false;
+      for(int row=0; row<HEIGHT; row++){   
+         for(int col=0; col<WIDTH; col++){
+            if("*".equals(board[row][col])){
+               if(" ".equals(board[row-1][col])){
+                  board[row-1][col] = "*";
+                  changed = true;
+               }
+               if(" ".equals(board[row+1][col])){
+                  board[row+1][col] = "*";
+                  changed = true;
+               }
+               if(" ".equals(board[row][col-1])){
+                  board[row][col-1] = "*";
+                  changed = true;
+               }
+               if(" ".equals(board[row][col+1])){
+                  board[row][col+1] = "*";
+                  changed = true;
+               }
+            }
+         }
+      }
+      return changed;
+   }
+
+
+
    static int[] getRandomPosition(String[][] board){
       int[] randomPosition = new int[2];
       while(!board[randomPosition[0]][randomPosition[1]].equals(" ")){
-         randomPosition[0] = RANDOM.nextInt(HEIGHT-2)+1;
-         randomPosition[1] = RANDOM.nextInt(WIDTH-2)+1;
+         randomPosition[0] = RANDOM.nextInt(HEIGHT);
+         randomPosition[1] = RANDOM.nextInt(WIDTH);
       }
       return randomPosition;
    }
@@ -190,23 +252,6 @@ public class BasicGame{
       }
       return direction;
    }
-   /*
-   static Direction changeEnemyDirection(String[][] board, Direction enemyDirection, int playerX, int playerY, int enemyX, int enemyY){
-      if(playerX < enemyX && board[enemyX-1][enemyY].equals(" ")){
-         return Direction.UP;
-      };
-      if(playerX > enemyX && board[enemyX+1][enemyY].equals(" ")){
-         return Direction.DOWN;
-      };
-      if(playerY < enemyY && board[enemyX][enemyY-1].equals(" ")){
-         return Direction.LEFT;
-      };
-      if(playerY > enemyY && board[enemyX][enemyY+1].equals(" ")){
-         return Direction.RIGHT;
-      };
-      return enemyDirection;
-   }
-   */
 
    static Direction changeDirectionTowards(String[][] board, Direction originalDirection, int aimX, int aimY, int chaserX, int chaserY){
       if(aimX < chaserX && board[chaserX-1][chaserY].equals(" ")){
@@ -223,7 +268,6 @@ public class BasicGame{
       };
       return originalDirection;
    }
-
 
    static int[] makeMove(Direction direction, String[][] board, int x, int y){
       switch(direction){
