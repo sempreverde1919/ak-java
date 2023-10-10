@@ -3,98 +3,109 @@ import java.util.Random;
 public class BasicGame{
    
    static final int GAME_LOOP_NUMBER = 1000;
-   static final int HEIGHT = 20;
-   static final int WIDTH = 20;
-   static Random RANDOM = new Random();
+   static final int HEIGHT = 30;
+   static final int WIDTH = 30;
+   static final Random RANDOM = new Random();
    static String gameResult = "GAME OVER";
 
-   public static void main(String []args) throws InterruptedException{
+   public static void main(String[] args) throws InterruptedException{
    
-      //pálya inicializálása
+      // pálya inicializálása
       String[][] level = new String[HEIGHT][WIDTH];
       do{
          initLevel(level);
          addRandomWall(level, 2, 3);
       }while(!isPassable(level));
    
-      //játékos inicializálása
+      // játékos inicializálása
       String playerMarker = "O";
-      int playerRow = getRandomPosition(level)[0];
-      int playerCol = getRandomPosition(level)[1];
+      Coordinates playerCoordinates = getRandomStartingCoordinates(level);
+      Coordinates playerEscapeCoordinates = getFarthestCorner(level, playerCoordinates);    
       Direction playerDirection = Direction.RIGHT;
    
-      //ellenfél inicializálása
+      // ellenfél inicializálása
       String enemyMarker = "-";
-      int enemyRow;
-      int enemyCol;
-      do{
-         enemyRow = getRandomPosition(level)[0];
-         enemyCol = getRandomPosition(level)[1];
-      }while((Math.abs(playerRow-enemyRow) + Math.abs(playerCol-enemyCol) < 10)); //ellenfél és játékos legalább 10 lépésre legyen egymástól
+      Coordinates enemyCoordinates = getRandomStartingCoordinatesAtLeastACertainDistanceFromGivenPoint(level, playerCoordinates, 10);
+      Coordinates enemyEscapeCoordinates = getFarthestCorner(level, enemyCoordinates);    
       Direction enemyDirection = Direction.LEFT;
    
-      //power-up inicializálása
+      // power-up inicializálása
       String powerUpMarker = "*";
-      int powerUpRow = getRandomPosition(level)[0];
-      int powerUpCol = getRandomPosition(level)[1];
+      Coordinates powerUpCoordinates = getRandomStartingCoordinates(level);
       boolean isPowerUpOnBoard = false; //power-up nincs a pályán
       boolean isPowerUpActive = false; //játékos nem vette fel a power-up-ot
-      int activePowerUpCounter = 0; //hány kör óta vette fel a játékos a power-upot;
+      int powerUpActiveCounter = 0; //hány kör óta vette fel a játékos a power-upot;
+      int powerUpPresentCounter = 0;
 
       //-----------------GAME-LOOP-----------------
       for(int iterationNumber=1; iterationNumber<=GAME_LOOP_NUMBER; iterationNumber++){      
-         //játékos irányválasztása
-         if(isPowerUpOnBoard){ //ha a power-up a pályán van, a játékos megpróbálja felvenni
-            playerDirection = changeDirectionTowards(level, playerDirection, powerUpRow, powerUpCol, playerRow, playerCol);
-         }else if(isPowerUpActive){
-            playerDirection = changeDirectionTowards(level, playerDirection, enemyRow, enemyCol, playerRow, playerCol);
-         }else if(iterationNumber%15==0){
-            playerDirection = changeDirection(playerDirection);
+         // játékos irányválasztása
+         if(isPowerUpActive){ //ha a power-up a pályán van, a játékos megpróbálja felvenni
+            playerDirection = getShortestPath(level, playerDirection, playerCoordinates, enemyCoordinates);
+         }else {
+            if(isPowerUpOnBoard){
+               playerDirection = getShortestPath(level, playerDirection, playerCoordinates, enemyCoordinates);
+            }
+            else{
+               if(iterationNumber%100==0){
+                  playerEscapeCoordinates = getFarthestCorner(level, playerCoordinates);
+               }
+               playerDirection = getShortestPath(level, playerDirection, playerCoordinates, playerEscapeCoordinates);
+            }
          }
-         //játékos léptetése
-         int[] playerCoordinates = makeMove(playerDirection, level, playerRow, playerCol);
-         playerRow = playerCoordinates[0];
-         playerCol = playerCoordinates[1];   
+         playerCoordinates = makeMove(playerDirection, level, playerCoordinates); //játékos léptetése
 
-         //ellenfél irányválasztása
+         // ellenfél irányválasztása
          if(isPowerUpActive){
-            enemyDirection = changeDirectionTowards(level, enemyDirection, enemyRow, enemyCol, playerRow, playerCol);
+            if(iterationNumber%100 == 0){
+               enemyEscapeCoordinates = getFarthestCorner(level, enemyCoordinates);
+            }
+            enemyDirection = getShortestPath(level, enemyDirection, enemyCoordinates, enemyEscapeCoordinates);
          }else{
-            enemyDirection = changeDirectionTowards(level, enemyDirection, playerCol, playerRow, enemyRow, enemyCol);
+            enemyDirection = getShortestPath(level, enemyDirection, enemyCoordinates, playerCoordinates);
          }
-         //ellenfél léptetése
-         if(iterationNumber%2==0){ //két körönként lép
-            int[] enemyCoordinates = makeMove(enemyDirection, level, enemyRow, enemyCol);
-            enemyRow = enemyCoordinates[0];
-            enemyCol = enemyCoordinates[1];  
+         // ellenfél léptetése (két körönként)
+         if(iterationNumber%2==0){
+            enemyCoordinates = makeMove(enemyDirection, level, enemyCoordinates);
          }
 
-         //power-up feltűnése/eltűnése
-         if(iterationNumber%20==0 && !isPowerUpActive){
+         // power-up frissítése
+         if(isPowerUpActive){
+            powerUpActiveCounter++;
+         }else{
+            powerUpPresentCounter++;
+         }
+         
+         if(powerUpPresentCounter >= 60){
+            if(isPowerUpOnBoard){
+               powerUpCoordinates = getRandomStartingCoordinates(level);
+            }
             isPowerUpOnBoard = !isPowerUpOnBoard;
-            powerUpRow = getRandomPosition(level)[0];
-            powerUpCol = getRandomPosition(level)[1];
+            powerUpPresentCounter = 0;
          }
-
-         if(isPowerUpActive && activePowerUpCounter<20){ //ha a power-up-ot felvette a játékos, az húsz körig aktív
-            activePowerUpCounter++;
-         }else{
+         if(powerUpPresentCounter <= 60){
             isPowerUpActive = false;
+            powerUpActiveCounter = 0;
+            powerUpCoordinates = getRandomStartingCoordinates(level);
+            playerEscapeCoordinates = getFarthestCorner(level, playerCoordinates);
          }
 
-         if(isPowerUpOnBoard && playerRow==powerUpRow && playerCol==powerUpCol){ //ha játékos rálép a power-up-ra
+
+         // játékos - power-up interakció
+         if(isPowerUpOnBoard && playerCoordinates.isSameAs(powerUpCoordinates)){ //ha játékos rálép a power-up-ra
             isPowerUpActive = true;
-            activePowerUpCounter = 1;
             isPowerUpOnBoard = false;
+            powerUpPresentCounter = 0;
+            enemyEscapeCoordinates = getFarthestCorner(level, enemyCoordinates);
          }
 
-         draw(level, playerMarker, playerRow, playerCol, enemyMarker, enemyRow, enemyCol, powerUpMarker, powerUpRow, powerUpCol, isPowerUpOnBoard); //kirajzolás
-         addSomeDelay(200L, iterationNumber, isPowerUpActive, activePowerUpCounter); //késleltetés hozzáadása
+         draw(level, playerMarker, playerCoordinates, enemyMarker, enemyCoordinates, powerUpMarker, powerUpCoordinates, isPowerUpOnBoard); //kirajzolás
+         addSomeDelay(200L, iterationNumber, isPowerUpActive, powerUpActiveCounter); //késleltetés hozzáadása
      
-         if(isPowerUpActive && playerRow==enemyRow && playerCol==enemyCol){//ha a játékos elkapja az ellenfelet
+         if(isPowerUpActive && playerCoordinates.isSameAs(enemyCoordinates)){//ha a játékos elkapja az ellenfelet
             gameResult += " - PLAYER WINS";
             break;
-         }else if(playerRow==enemyRow && playerCol==enemyCol){//ha az ellenfél kapja el a játékost
+         }else if(playerCoordinates.isSameAs(enemyCoordinates)){//ha az ellenfél kapja el a játékost
             gameResult += " - ENEMY WINS";
             break;
          }
@@ -105,60 +116,60 @@ public class BasicGame{
  
  //--------------METHODS:
 
-   static void initLevel(String[][] board){
-      for(int row = 0; row<board.length; row++){
-         for(int col = 0; col<board[row].length; col++){
+   static void initLevel(String[][] level){
+      for(int row = 0; row<level.length; row++){
+         for(int col = 0; col<level[row].length; col++){
             if(row==0 || row==HEIGHT-1 || col==0 || col==WIDTH-1){
-               board[row][col] = "X";
+               level[row][col] = "X";
             }else{
-               board[row][col] = " ";         
+               level[row][col] = " ";         
             }
          }
       }
    }
 
-   static void addRandomWall(String[][]board, int numberOfHorizontalWalls, int numberOfVerticalWalls){
+   static void addRandomWall(String[][]level, int numberOfHorizontalWalls, int numberOfVerticalWalls){
       for(int i=0; i<numberOfHorizontalWalls; i++){
-         addHorizontalWall(board);
+         addHorizontalWall(level);
       }
       for(int i=0; i<numberOfVerticalWalls; i++){
-         addVerticalWall(board);
+         addVerticalWall(level);
       }
    }
 
-   static void addHorizontalWall(String[][] board){
+   static void addHorizontalWall(String[][] level){
       int wallWidth = RANDOM.nextInt(WIDTH-3);
       int wallRow = RANDOM.nextInt(HEIGHT-2)+1;
       int wallColumn = RANDOM.nextInt(WIDTH-2-wallWidth);
       for(int i=0; i<wallWidth; i++){
-         board[wallRow][wallColumn+i] = "X";
+         level[wallRow][wallColumn+i] = "X";
       }
    }
 
-   static void addVerticalWall(String[][] board){
+   static void addVerticalWall(String[][] level){
       int wallHeight = RANDOM.nextInt(HEIGHT-3);
       int wallRow = RANDOM.nextInt(HEIGHT-2-wallHeight);
       int wallColumn = RANDOM.nextInt(WIDTH-2)+1;
       for(int i=0; i<wallHeight; i++){
-         board[wallRow+i][wallColumn] = "X";
+         level[wallRow+i][wallColumn] = "X";
       }
    }
 
-   static boolean isPassable(String[][] board) {
-      String[][] boardCopy = copy(board);
+   static boolean isPassable(String[][] level) {
+      String[][] levelCopy = copy(level);
       outer: for(int row=0; row<HEIGHT; row++){
          for(int col=0; col<WIDTH; col++){
-            if(" ".equals(boardCopy[row][col])){
-               boardCopy[row][col] = "*";
+            if(" ".equals(levelCopy[row][col])){
+               levelCopy[row][col] = "*";
                break outer;
             }
          }
       }
-      while(spreadAsterisks(boardCopy)){
+      while(spreadAsterisks(levelCopy)){
       };
       for(int row=0; row<HEIGHT; row++){
          for(int col=0; col<WIDTH; col++){
-            if(" ".equals(boardCopy[row][col])){
+            if(" ".equals(levelCopy[row][col])){
               return false;
             }
          }
@@ -166,34 +177,35 @@ public class BasicGame{
       return true;
    }
 
-   static String[][] copy(String[][] board){
+   static String[][] copy(String[][] level){
       String[][] copy = new String[HEIGHT][WIDTH];
       for(int row=0; row<HEIGHT; row++){
          for(int col=0; col<WIDTH; col++){
-            copy[row][col] = board[row][col];
+            copy[row][col] = level[row][col];
          }
       }
       return copy;
    }
-   static boolean spreadAsterisks(String[][] board){
+   
+   static boolean spreadAsterisks(String[][] level){
       boolean changed = false;
       for(int row=0; row<HEIGHT; row++){   
          for(int col=0; col<WIDTH; col++){
-            if("*".equals(board[row][col])){
-               if(" ".equals(board[row-1][col])){
-                  board[row-1][col] = "*";
+            if("*".equals(level[row][col])){
+               if(" ".equals(level[row-1][col])){
+                  level[row-1][col] = "*";
                   changed = true;
                }
-               if(" ".equals(board[row+1][col])){
-                  board[row+1][col] = "*";
+               if(" ".equals(level[row+1][col])){
+                  level[row+1][col] = "*";
                   changed = true;
                }
-               if(" ".equals(board[row][col-1])){
-                  board[row][col-1] = "*";
+               if(" ".equals(level[row][col-1])){
+                  level[row][col-1] = "*";
                   changed = true;
                }
-               if(" ".equals(board[row][col+1])){
-                  board[row][col+1] = "*";
+               if(" ".equals(level[row][col+1])){
+                  level[row][col+1] = "*";
                   changed = true;
                }
             }
@@ -202,8 +214,42 @@ public class BasicGame{
       return changed;
    }
 
+   static boolean spreadAsterisksWithCheck(String[][] levelCopy) {
+      boolean[][] mask = new boolean[HEIGHT][WIDTH];
+      for (int row = 0; row < HEIGHT; row++) {
+          for (int column = 0; column < WIDTH; column++) {
+              if ("*".equals(levelCopy[row][column])) {
+                  mask[row][column] = true;
+              }
+          }
+      }
+      boolean changed = false;
+      for (int row = 0; row < HEIGHT; row++) {
+          for (int column = 0; column < WIDTH; column++) {
+              if ("*".equals(levelCopy[row][column]) && mask[row][column]) {
+                  if (" ".equals(levelCopy[row - 1][column])) {
+                      levelCopy[row - 1][column] = "*";
+                      changed = true;
+                  }
+                  if (" ".equals(levelCopy[row + 1][column])) {
+                      levelCopy[row + 1][column] = "*";
+                      changed = true;
+                  }
+                  if (" ".equals(levelCopy[row][column - 1])) {
+                      levelCopy[row][column - 1] = "*";
+                      changed = true;
+                  }
+                  if (" ".equals(levelCopy[row][column + 1])) {
+                      levelCopy[row][column + 1] = "*";
+                      changed = true;
+                  }
+              }
+          }
+      }
+      return changed;
+  }
 
-
+   /*
    static int[] getRandomPosition(String[][] board){
       int[] randomPosition = new int[2];
       while(!board[randomPosition[0]][randomPosition[1]].equals(" ")){
@@ -212,18 +258,98 @@ public class BasicGame{
       }
       return randomPosition;
    }
+   */
 
-   static void draw(String[][] board, String playerMark, int playerX, int playerY, String enemyMark, int enemyX, int enemyY, String powerUpMark, int powerUpX, int powerUpY, boolean powerUpOn){
+   static Coordinates getRandomStartingCoordinates(String[][] level) {
+      int randomRow;
+      int randomColumn;
+      do {
+          randomRow = RANDOM.nextInt(HEIGHT);
+          randomColumn = RANDOM.nextInt(WIDTH);
+      } while (!level[randomRow][randomColumn].equals(" "));
+      Coordinates randomStartingCoordinates = new Coordinates();
+      randomStartingCoordinates.setRow(randomRow);
+      randomStartingCoordinates.setColumn(randomColumn);
+      return randomStartingCoordinates;
+   }
+
+   static Coordinates getRandomStartingCoordinatesAtLeastACertainDistanceFromGivenPoint(String[][] level, Coordinates playerStartingCoordinates, int distance) {
+      int playerStartingRow = playerStartingCoordinates.getRow();
+      int playerStartingColumn = playerStartingCoordinates.getColumn();
+      int randomRow;
+      int randomColumn;
+      int counter = 0;
+      do {
+         randomRow = RANDOM.nextInt(HEIGHT);
+         randomColumn = RANDOM.nextInt(WIDTH);
+      } while (counter++ < 1_000
+            && (!level[randomRow][randomColumn].equals(" ") || calculateDistance(randomRow, randomColumn, playerStartingRow, playerStartingColumn) < distance));
+      Coordinates randomStartingCoordinatesAtLeastACertainDistanceFromGivenPoint = new Coordinates();
+      randomStartingCoordinatesAtLeastACertainDistanceFromGivenPoint.setRow(randomRow);
+      randomStartingCoordinatesAtLeastACertainDistanceFromGivenPoint.setColumn(randomColumn);
+      return randomStartingCoordinatesAtLeastACertainDistanceFromGivenPoint;
+   }
+
+   static int calculateDistance(int row1, int column1, int row2, int column2) {
+      int rowDifference = Math.abs(row1 - row2);
+      int columnDifference = Math.abs(column1 - column2);
+      return rowDifference + columnDifference;
+   }
+
+   static Coordinates getFarthestCorner(String[][] level, Coordinates from) {
+      String[][] levelCopy = copy(level); // pálya lemásolása
+      levelCopy[from.getRow()][from.getColumn()] = "*"; // első csillag lehelyezése a célpontra
+      int farthestRow = 0;
+      int farthestColumn = 0;
+      while (spreadAsterisksWithCheck(levelCopy)) {
+          outer: for (int row = 0; row < HEIGHT; row++) {
+              for (int column = 0; column < WIDTH; column++) {
+                  if (" ".equals(levelCopy[row][column])) {
+                      farthestRow = row;
+                      farthestColumn = column;
+                      break outer;
+                  }
+              }
+          }
+      }
+      Coordinates farthestCorner = new Coordinates();
+      farthestCorner.setRow(farthestRow);
+      farthestCorner.setColumn(farthestColumn);
+      return farthestCorner;
+   }
+
+   static Direction getShortestPath(String[][] level, Direction defaultDirection, Coordinates from, Coordinates to) {
+      String[][] levelCopy = copy(level); // pálya lemásolása
+      levelCopy[to.getRow()][to.getColumn()] = "*"; // első csillag lehelyezése a célpontra
+      // *-ok terjesztése a szabad helyekre
+      while (spreadAsterisksWithCheck(levelCopy)) {
+          if ("*".equals(levelCopy[from.getRow() - 1][from.getColumn()])) {
+              return Direction.UP;
+          }
+          if ("*".equals(levelCopy[from.getRow() + 1][from.getColumn()])) {
+              return Direction.DOWN;
+          }
+          if ("*".equals(levelCopy[from.getRow()][from.getColumn() - 1])) {
+              return Direction.LEFT;
+          }
+          if ("*".equals(levelCopy[from.getRow()][from.getColumn() + 1])) {
+              return Direction.RIGHT;
+          }
+      }
+      return defaultDirection;
+   }
+
+   static void draw(String[][] level, String playerMark, Coordinates player, String enemyMark, Coordinates enemy, String powerUpMark, Coordinates powerUp, boolean powerUpOn){
       for(int row = 0; row<HEIGHT; row++){
          for(int col = 0; col<WIDTH; col++){ 
-            if(row==playerX && col==playerY){
+            if(row==player.getRow() && col==player.getColumn()){
                System.out.print(playerMark);
-            }else if(row==enemyX && col==enemyY){
+            }else if(row==enemy.getRow() && col==enemy.getColumn()){
                System.out.print(enemyMark);
-            }else if(row==powerUpX && col==powerUpY && powerUpOn){
+            }else if(row==powerUp.getRow() && col==powerUp.getColumn() && powerUpOn){
                System.out.print(powerUpMark);
             }else{
-               System.out.print(board[row][col]);
+               System.out.print(level[row][col]);
             }   
          }
          System.out.println();
@@ -269,38 +395,33 @@ public class BasicGame{
       return originalDirection;
    }
 
-   static int[] makeMove(Direction direction, String[][] board, int x, int y){
+   static Coordinates makeMove(Direction direction, String[][] level, Coordinates oldCoords){
+      Coordinates newCoords = new Coordinates();
+      newCoords.setRow(oldCoords.getRow());
+      newCoords.setColumn(oldCoords.getColumn());
       switch(direction){
          case UP:
-            if(board[x-1][y].equals(" ")){
-               x--;
-            }else{
-               direction = Direction.RIGHT;
+            if(level[oldCoords.getRow()-1][oldCoords.getColumn()].equals(" ")){
+               newCoords.setRow(oldCoords.getRow()-1);
             }
             break;
          case DOWN:
-            if(board[x+1][y].equals(" ")){
-               x++;
-            }else{
-               direction = Direction.LEFT;
+            if(level[oldCoords.getRow()+1][oldCoords.getColumn()].equals(" ")){
+               newCoords.setRow(oldCoords.getRow()+1);
             }
             break;
          case LEFT:
-            if(board[x][y-1].equals(" ")){
-               y--;
-            }else{
-               direction = Direction.UP;
+            if(level[oldCoords.getRow()][oldCoords.getColumn()-1].equals(" ")){
+               newCoords.setColumn(oldCoords.getColumn()-1);
             }
             break;
          case RIGHT:
-            if(board[x][y+1].equals(" ")){
-               y++;
-            }else{
-               direction = Direction.DOWN;
+            if(level[oldCoords.getRow()][oldCoords.getColumn()+1].equals(" ")){
+               newCoords.setColumn(oldCoords.getColumn()+1);
             }
             break;
          }
-         return new int[] {x,y};
+         return newCoords;
    }
 
 }
