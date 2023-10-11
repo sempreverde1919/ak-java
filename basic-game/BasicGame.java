@@ -9,21 +9,22 @@ public class BasicGame{
    static String gameResult = "GAME OVER";
 
    public static void main(String[] args) throws InterruptedException{
-   
+     
       // pálya inicializálása
-      String[][] level = new String[HEIGHT][WIDTH];
+      Level level;
       do{
-         initLevel(level);
-         addRandomWall(level, 2, 3);
-      }while(!isPassable(level));
-   
+         level = new Level(RANDOM, HEIGHT, WIDTH);
+         level.addRandomWall(2, 3);
+      }while(!level.isPassable());
+      
+  
       // játékos inicializálása
       Coordinates playerCoordinates = getRandomStartingCoordinates(level);
-      Entity player = new Entity("O", playerCoordinates, getFarthestCorner(level, playerCoordinates), Direction.RIGHT);
+      Entity player = new Entity("O", playerCoordinates, level.getFarthestCorner(playerCoordinates), Direction.RIGHT);
    
       // ellenfél inicializálása
       Coordinates enemyCoordinates = getRandomStartingCoordinatesAtLeastACertainDistanceFromGivenPoint(level, playerCoordinates, 10);
-      Entity enemy = new Entity("-", enemyCoordinates, getFarthestCorner(level, enemyCoordinates), Direction.LEFT);
+      Entity enemy = new Entity("-", enemyCoordinates, level.getFarthestCorner(enemyCoordinates), Direction.LEFT);
    
       // power-up inicializálása
       String powerUpMarker = "*";
@@ -37,16 +38,16 @@ public class BasicGame{
       for(int iterationNumber=1; iterationNumber<=GAME_LOOP_NUMBER; iterationNumber++){      
          // játékos irányválasztása
          if(isPowerUpActive){ //ha a power-up a pályán van, a játékos megpróbálja felvenni
-            player.setDirection(getShortestPath(level, player.getDirection(), playerCoordinates, enemyCoordinates));
+            player.setDirection(level.getShortestPath(player.getDirection(), playerCoordinates, enemyCoordinates));
          }else {
             if(isPowerUpOnBoard){
-               player.setDirection(getShortestPath(level, player.getDirection(), playerCoordinates, enemyCoordinates));
+               player.setDirection(level.getShortestPath(player.getDirection(), playerCoordinates, enemyCoordinates));
             }
             else{
                if(iterationNumber%100==0){
-                  player.setEscapeCoordinates(getFarthestCorner(level, playerCoordinates));
+                  player.setEscapeCoordinates(level.getFarthestCorner(playerCoordinates));
                }
-               player.setDirection(getShortestPath(level, player.getDirection(), playerCoordinates, player.getEscapeCoordinates()));
+               player.setDirection(level.getShortestPath(player.getDirection(), playerCoordinates, player.getEscapeCoordinates()));
             }
          }
          playerCoordinates = makeMove(player.getDirection(), level, playerCoordinates); //játékos léptetése
@@ -54,11 +55,11 @@ public class BasicGame{
          // ellenfél irányválasztása
          if(isPowerUpActive){
             if(iterationNumber%100 == 0){
-               enemy.setEscapeCoordinates(getFarthestCorner(level, enemyCoordinates));
+               enemy.setEscapeCoordinates(level.getFarthestCorner(enemyCoordinates));
             }
-            enemy.setDirection(getShortestPath(level, enemy.getDirection(), enemyCoordinates, enemy.getEscapeCoordinates()));
+            enemy.setDirection(level.getShortestPath(enemy.getDirection(), enemyCoordinates, enemy.getEscapeCoordinates()));
          }else{
-            enemy.setDirection(getShortestPath(level, enemy.getDirection(), enemyCoordinates, playerCoordinates));
+            enemy.setDirection(level.getShortestPath(enemy.getDirection(), enemyCoordinates, playerCoordinates));
          }
          // ellenfél léptetése (két körönként)
          if(iterationNumber%2==0){
@@ -83,7 +84,7 @@ public class BasicGame{
             isPowerUpActive = false;
             powerUpActiveCounter = 0;
             powerUpCoordinates = getRandomStartingCoordinates(level);
-            player.setEscapeCoordinates(getFarthestCorner(level, playerCoordinates));
+            player.setEscapeCoordinates(level.getFarthestCorner(playerCoordinates));
          }
 
 
@@ -92,7 +93,7 @@ public class BasicGame{
             isPowerUpActive = true;
             isPowerUpOnBoard = false;
             powerUpPresentCounter = 0;
-            enemy.setEscapeCoordinates(getFarthestCorner(level, enemyCoordinates));
+            enemy.setEscapeCoordinates(level.getFarthestCorner(enemyCoordinates));
          }
 
          draw(level, player.getMarker(), playerCoordinates, enemy.getMarker(), enemyCoordinates, powerUpMarker, powerUpCoordinates, isPowerUpOnBoard); //kirajzolás
@@ -112,234 +113,34 @@ public class BasicGame{
  
  //--------------METHODS:
 
-   static void initLevel(String[][] level){
-      for(int row = 0; row<level.length; row++){
-         for(int col = 0; col<level[row].length; col++){
-            if(row==0 || row==HEIGHT-1 || col==0 || col==WIDTH-1){
-               level[row][col] = "X";
-            }else{
-               level[row][col] = " ";         
-            }
-         }
-      }
-   }
-
-   static void addRandomWall(String[][]level, int numberOfHorizontalWalls, int numberOfVerticalWalls){
-      for(int i=0; i<numberOfHorizontalWalls; i++){
-         addHorizontalWall(level);
-      }
-      for(int i=0; i<numberOfVerticalWalls; i++){
-         addVerticalWall(level);
-      }
-   }
-
-   static void addHorizontalWall(String[][] level){
-      int wallWidth = RANDOM.nextInt(WIDTH-3);
-      int wallRow = RANDOM.nextInt(HEIGHT-2)+1;
-      int wallColumn = RANDOM.nextInt(WIDTH-2-wallWidth);
-      for(int i=0; i<wallWidth; i++){
-         level[wallRow][wallColumn+i] = "X";
-      }
-   }
-
-   static void addVerticalWall(String[][] level){
-      int wallHeight = RANDOM.nextInt(HEIGHT-3);
-      int wallRow = RANDOM.nextInt(HEIGHT-2-wallHeight);
-      int wallColumn = RANDOM.nextInt(WIDTH-2)+1;
-      for(int i=0; i<wallHeight; i++){
-         level[wallRow+i][wallColumn] = "X";
-      }
-   }
-
-   static boolean isPassable(String[][] level) {
-      String[][] levelCopy = copy(level);
-      outer: for(int row=0; row<HEIGHT; row++){
-         for(int col=0; col<WIDTH; col++){
-            if(" ".equals(levelCopy[row][col])){
-               levelCopy[row][col] = "*";
-               break outer;
-            }
-         }
-      }
-      while(spreadAsterisks(levelCopy)){
-      };
-      for(int row=0; row<HEIGHT; row++){
-         for(int col=0; col<WIDTH; col++){
-            if(" ".equals(levelCopy[row][col])){
-              return false;
-            }
-         }
-      }
-      return true;
-   }
-
-   static String[][] copy(String[][] level){
-      String[][] copy = new String[HEIGHT][WIDTH];
-      for(int row=0; row<HEIGHT; row++){
-         for(int col=0; col<WIDTH; col++){
-            copy[row][col] = level[row][col];
-         }
-      }
-      return copy;
-   }
-   
-   static boolean spreadAsterisks(String[][] level){
-      boolean changed = false;
-      for(int row=0; row<HEIGHT; row++){   
-         for(int col=0; col<WIDTH; col++){
-            if("*".equals(level[row][col])){
-               if(" ".equals(level[row-1][col])){
-                  level[row-1][col] = "*";
-                  changed = true;
-               }
-               if(" ".equals(level[row+1][col])){
-                  level[row+1][col] = "*";
-                  changed = true;
-               }
-               if(" ".equals(level[row][col-1])){
-                  level[row][col-1] = "*";
-                  changed = true;
-               }
-               if(" ".equals(level[row][col+1])){
-                  level[row][col+1] = "*";
-                  changed = true;
-               }
-            }
-         }
-      }
-      return changed;
-   }
-
-   static boolean spreadAsterisksWithCheck(String[][] levelCopy) {
-      boolean[][] mask = new boolean[HEIGHT][WIDTH];
-      for (int row = 0; row < HEIGHT; row++) {
-          for (int column = 0; column < WIDTH; column++) {
-              if ("*".equals(levelCopy[row][column])) {
-                  mask[row][column] = true;
-              }
-          }
-      }
-      boolean changed = false;
-      for (int row = 0; row < HEIGHT; row++) {
-          for (int column = 0; column < WIDTH; column++) {
-              if ("*".equals(levelCopy[row][column]) && mask[row][column]) {
-                  if (" ".equals(levelCopy[row - 1][column])) {
-                      levelCopy[row - 1][column] = "*";
-                      changed = true;
-                  }
-                  if (" ".equals(levelCopy[row + 1][column])) {
-                      levelCopy[row + 1][column] = "*";
-                      changed = true;
-                  }
-                  if (" ".equals(levelCopy[row][column - 1])) {
-                      levelCopy[row][column - 1] = "*";
-                      changed = true;
-                  }
-                  if (" ".equals(levelCopy[row][column + 1])) {
-                      levelCopy[row][column + 1] = "*";
-                      changed = true;
-                  }
-              }
-          }
-      }
-      return changed;
-  }
-
-   /*
-   static int[] getRandomPosition(String[][] board){
-      int[] randomPosition = new int[2];
-      while(!board[randomPosition[0]][randomPosition[1]].equals(" ")){
-         randomPosition[0] = RANDOM.nextInt(HEIGHT);
-         randomPosition[1] = RANDOM.nextInt(WIDTH);
-      }
-      return randomPosition;
-   }
-   */
-
-   static Coordinates getRandomStartingCoordinates(String[][] level) {
-      int randomRow;
-      int randomColumn;
+   static Coordinates getRandomStartingCoordinates(Level level) {
+      Coordinates randomCoordinates;
       do {
-          randomRow = RANDOM.nextInt(HEIGHT);
-          randomColumn = RANDOM.nextInt(WIDTH);
-      } while (!level[randomRow][randomColumn].equals(" "));
-      Coordinates randomStartingCoordinates = new Coordinates(randomRow, randomColumn);
-      randomStartingCoordinates.setRow(randomRow);
-      randomStartingCoordinates.setColumn(randomColumn);
-      return randomStartingCoordinates;
+         randomCoordinates = new Coordinates(RANDOM.nextInt(HEIGHT), RANDOM.nextInt(WIDTH));
+      } while(!level.isEmpty(randomCoordinates));
+      return randomCoordinates;
    }
 
-   static Coordinates getRandomStartingCoordinatesAtLeastACertainDistanceFromGivenPoint(String[][] level, Coordinates playerStartingCoordinates, int distance) {
-      int playerStartingRow = playerStartingCoordinates.getRow();
-      int playerStartingColumn = playerStartingCoordinates.getColumn();
-      int randomRow;
-      int randomColumn;
+   static Coordinates getRandomStartingCoordinatesAtLeastACertainDistanceFromGivenPoint(Level level, Coordinates playerStartingCoordinates, int distance) {
+      Coordinates randomCoordinates;
       int counter = 0;
-      do {
-         randomRow = RANDOM.nextInt(HEIGHT);
-         randomColumn = RANDOM.nextInt(WIDTH);
-      } while (counter++ < 1_000
-            && (!level[randomRow][randomColumn].equals(" ") || calculateDistance(randomRow, randomColumn, playerStartingRow, playerStartingColumn) < distance));
-      return new Coordinates(randomRow, randomRow);
+      do{
+         randomCoordinates = getRandomStartingCoordinates(level);
+      } while(counter++ < 1_000 && randomCoordinates.distanceFrom(playerStartingCoordinates)<distance);
+      return randomCoordinates;
    }
-
-   static int calculateDistance(int row1, int column1, int row2, int column2) {
-      int rowDifference = Math.abs(row1 - row2);
-      int columnDifference = Math.abs(column1 - column2);
-      return rowDifference + columnDifference;
-   }
-
-   static Coordinates getFarthestCorner(String[][] level, Coordinates from) {
-      String[][] levelCopy = copy(level); // pálya lemásolása
-      levelCopy[from.getRow()][from.getColumn()] = "*"; // első csillag lehelyezése a célpontra
-      int farthestRow = 0;
-      int farthestColumn = 0;
-      while (spreadAsterisksWithCheck(levelCopy)) {
-          outer: for (int row = 0; row < HEIGHT; row++) {
-              for (int column = 0; column < WIDTH; column++) {
-                  if (" ".equals(levelCopy[row][column])) {
-                      farthestRow = row;
-                      farthestColumn = column;
-                      break outer;
-                  }
-              }
-          }
-      }
-      return new Coordinates(farthestRow, farthestColumn);
-   }
-
-   static Direction getShortestPath(String[][] level, Direction defaultDirection, Coordinates from, Coordinates to) {
-      String[][] levelCopy = copy(level); // pálya lemásolása
-      levelCopy[to.getRow()][to.getColumn()] = "*"; // első csillag lehelyezése a célpontra
-      // *-ok terjesztése a szabad helyekre
-      while (spreadAsterisksWithCheck(levelCopy)) {
-          if ("*".equals(levelCopy[from.getRow() - 1][from.getColumn()])) {
-              return Direction.UP;
-          }
-          if ("*".equals(levelCopy[from.getRow() + 1][from.getColumn()])) {
-              return Direction.DOWN;
-          }
-          if ("*".equals(levelCopy[from.getRow()][from.getColumn() - 1])) {
-              return Direction.LEFT;
-          }
-          if ("*".equals(levelCopy[from.getRow()][from.getColumn() + 1])) {
-              return Direction.RIGHT;
-          }
-      }
-      return defaultDirection;
-   }
-
-   static void draw(String[][] level, String playerMark, Coordinates player, String enemyMark, Coordinates enemy, String powerUpMark, Coordinates powerUp, boolean powerUpOn){
+   static void draw(Level level, String playerMark, Coordinates player, String enemyMark, Coordinates enemy, String powerUpMark, Coordinates powerUp, boolean powerUpOn){
       for(int row = 0; row<HEIGHT; row++){
          for(int col = 0; col<WIDTH; col++){ 
-            if(row==player.getRow() && col==player.getColumn()){
+            Coordinates coordinatesToDraw = new Coordinates(row, col);
+            if(coordinatesToDraw.isSameAs(player)){
                System.out.print(playerMark);
-            }else if(row==enemy.getRow() && col==enemy.getColumn()){
+            }else if(coordinatesToDraw.isSameAs(enemy)){
                System.out.print(enemyMark);
-            }else if(row==powerUp.getRow() && col==powerUp.getColumn() && powerUpOn){
+            }else if(coordinatesToDraw.isSameAs(powerUp) && powerUpOn){
                System.out.print(powerUpMark);
             }else{
-               System.out.print(level[row][col]);
+               System.out.print(level.getCell(coordinatesToDraw));
             }   
          }
          System.out.println();
@@ -385,26 +186,26 @@ public class BasicGame{
       return originalDirection;
    }
 
-   static Coordinates makeMove(Direction direction, String[][] level, Coordinates oldCoords){
+   static Coordinates makeMove(Direction direction, Level level, Coordinates oldCoords){
       Coordinates newCoords = new Coordinates(oldCoords.getRow(), oldCoords.getColumn());
       switch(direction){
          case UP:
-            if(level[oldCoords.getRow()-1][oldCoords.getColumn()].equals(" ")){
+            if(level.isEmpty(new Coordinates(oldCoords.getRow()-1, oldCoords.getColumn()))){
                newCoords.setRow(oldCoords.getRow()-1);
             }
             break;
          case DOWN:
-            if(level[oldCoords.getRow()+1][oldCoords.getColumn()].equals(" ")){
+            if(level.isEmpty(new Coordinates(oldCoords.getRow()+1, oldCoords.getColumn()))){
                newCoords.setRow(oldCoords.getRow()+1);
             }
             break;
          case LEFT:
-            if(level[oldCoords.getRow()][oldCoords.getColumn()-1].equals(" ")){
+            if(level.isEmpty(new Coordinates(oldCoords.getRow(), oldCoords.getColumn()-1))){
                newCoords.setColumn(oldCoords.getColumn()-1);
             }
             break;
          case RIGHT:
-            if(level[oldCoords.getRow()][oldCoords.getColumn()+1].equals(" ")){
+            if(level.isEmpty(new Coordinates(oldCoords.getRow(), oldCoords.getColumn()+1))){
                newCoords.setColumn(oldCoords.getColumn()+1);
             }
             break;

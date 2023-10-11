@@ -26,4 +26,10 @@ public class Coordinates {
         return this.row==other.row && this.column==other.column;
     }
 
+    public int distanceFrom(Coordinates other) {
+        int rowDifference = Math.abs(this.row - other.row);
+        int columnDifference = Math.abs(this.column - other.column);
+        return rowDifference + columnDifference;
+     }
+
 }
